@@ -3,6 +3,7 @@ package lcs
 import (
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -618,4 +619,68 @@ func TestEnum2DSlice(t *testing.T) {
 			name: "2D enum slice",
 		},
 	})
+}
+
+type Custom struct {
+	Name string
+	Age  int32
+}
+
+func (s Custom) MarshalLCS(e *Encoder) error {
+	x := fmt.Sprintf("%v###%v", s.Name, s.Age)
+	b := []byte(x)
+	return e.EncodeBytes(b)
+}
+
+func (s *Custom) UnmarshalLCS(d *Decoder) error {
+	b, err := d.DecodeBytes()
+	if err != nil {
+		return err
+	}
+	parts := strings.Split(string(b), "###")
+	if len(parts) != 2 {
+		return errors.New("data error")
+	}
+	s.Name = parts[0]
+	age, err := strconv.ParseInt(parts[1], 10, 32)
+	if err != nil {
+		return err
+	}
+	s.Age = int32(age)
+	return nil
+}
+
+type Normal struct {
+	C1   *Custom `lcs:"c1"`
+	Desc string  `lcs:"desc"`
+	C2   Custom  `lcs:"c2"`
+}
+
+func TestCustomEncodeDecode(t *testing.T) {
+	c1 := Custom{Name: "GG", Age: 20}
+	c2 := Custom{Name: "ZZZ", Age: 34}
+	normal := Normal{
+		C1:   &c1,
+		Desc: "ssss",
+		C2:   c2,
+	}
+
+	d, err := Marshal(normal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("%x", d)
+
+	var unmarshaled = Normal{
+		C1: &Custom{},
+	}
+	err = Unmarshal(d, &unmarshaled)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(normal, unmarshaled) {
+		t.Fatal(err, normal, unmarshaled)
+	} else {
+		t.Log("TestCustomEncodeDecode passed", unmarshaled)
+	}
 }

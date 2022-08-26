@@ -9,16 +9,18 @@ Go library for Libra canonical serialization (and deserialization). See [LCS Spe
 
 For types defined and used in actual Libra blockchain, please visit [go-libra](https://github.com/the729/go-libra): Libra client library with crypto verifications.
 
+Supported Custom **`Marshal`** & **`Unmarshal`**.
+
 ## Installation
 
 ```bash
-$ go get -u github.com/the729/lcs
+$ go get -u github.com/coming-chat/lcs
 ```
 
 ## Usage
 
 ```golang
-import "github.com/the729/lcs"
+import "github.com/coming-chat/lcs"
 ```
 
 See [`example_test.go`](example_test.go) for complete examples.

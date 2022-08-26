@@ -1,4 +1,4 @@
-module github.com/the729/lcs
+module github.com/coming-chat/lcs
 
 go 1.12
 

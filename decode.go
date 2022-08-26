@@ -10,6 +10,10 @@ import (
 	"strconv"
 )
 
+type Unmarshaler interface {
+	UnmarshalLCS(d *Decoder) error
+}
+
 type Decoder struct {
 	r     io.Reader
 	enums map[reflect.Type]map[string]map[EnumKeyType]reflect.Type
@@ -38,7 +42,30 @@ func (d *Decoder) EOF() bool {
 	return false
 }
 
+func (d *Decoder) DecodeBytes() ([]byte, error) {
+	return d.decodeByteSlice(0)
+}
+
+func (d *Decoder) DecodeFixedBytes(length int) ([]byte, error) {
+	return d.decodeByteSlice(length)
+}
+
+func (d *Decoder) DecodeUleb128() (uint64, error) {
+	return readVarUint(d.r, 28)
+}
+
 func (d *Decoder) decode(rv reflect.Value, enumVariants map[EnumKeyType]reflect.Type, fixedLen int) (err error) {
+
+	rvPtr := rv
+	if rv.Kind() != reflect.Pointer && rv.Type().Name() != "" && rv.CanAddr() {
+		rvPtr = rv.Addr()
+	}
+	if rvPtr.Kind() == reflect.Pointer {
+		if m, ok := rvPtr.Interface().(Unmarshaler); ok {
+			return m.UnmarshalLCS(d)
+		}
+	}
+
 	switch rv.Kind() {
 	case reflect.Bool:
 		if !rv.CanSet() {

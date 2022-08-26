@@ -11,6 +11,12 @@ import (
 	"strconv"
 )
 
+// Marshaler is the interface implemented by types that
+// can marshal themselves into valid LCS.
+type Marshaler interface {
+	MarshalLCS(e *Encoder) error
+}
+
 type Encoder struct {
 	w     *bufio.Writer
 	enums map[reflect.Type]map[string]map[reflect.Type]EnumKeyType
@@ -31,7 +37,35 @@ func (e *Encoder) Encode(v interface{}) error {
 	return nil
 }
 
+func (e *Encoder) EncodeBytes(b []byte) error {
+	return e.encodeSlice(reflect.Indirect(reflect.ValueOf(b)), nil, 0)
+}
+
+// @params b must be a byte array of limited length. [N]byte
+func (e *Encoder) EncodeFixedBytes(b []byte) (err error) {
+	rv := reflect.Indirect(reflect.ValueOf(b))
+	l := rv.Len()
+	print(l)
+	for i := 0; i < rv.Len(); i++ {
+		item := rv.Index(i)
+		if err = e.encode(item, nil, 0); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (e *Encoder) EncodeUleb128(u uint64) error {
+	_, err := writeVarUint(e.w, u)
+	return err
+}
+
 func (e *Encoder) encode(rv reflect.Value, enumVariants map[reflect.Type]EnumKeyType, fixedLen int) (err error) {
+
+	if m, ok := rv.Interface().(Marshaler); ok {
+		return m.MarshalLCS(e)
+	}
+
 	// rv = indirect(rv)
 	switch rv.Kind() {
 	case reflect.Bool,
