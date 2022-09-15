@@ -115,7 +115,7 @@ func (e *Encoder) encodeInterface(rv reflect.Value, enumVariants map[reflect.Typ
 		return errors.New("non-optional enum value is nil")
 	}
 
-	ev, ok := enumGetIdxByType(rv.Type(), rv.Elem().Type())
+	ev, ok := enumGetIdxByType(rv)
 	rvReal := rv.Elem()
 	if !ok {
 		ev, ok = enumVariants[rvReal.Type()]

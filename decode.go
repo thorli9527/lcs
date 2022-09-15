@@ -253,7 +253,7 @@ func (d *Decoder) decodeInterface(rv reflect.Value, enumVariants map[EnumKeyType
 	if err != nil {
 		return
 	}
-	tpl, ok := enumGetTypeByIdx(rv.Type(), typeVal)
+	tpl, ok := enumGetTypeByIdx(rv)
 	if !ok {
 		tpl, ok = enumVariants[typeVal]
 		if !ok {
