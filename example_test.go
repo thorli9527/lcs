@@ -2,7 +2,9 @@ package lcs_test
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"reflect"
 
 	"github.com/coming-chat/lcs"
 )
@@ -57,28 +59,70 @@ func ExampleUnmarshal_struct() {
 	// Output: Name: test, Label: hello
 }
 
-type TransactionArgument interface{}
+//type TransactionArgument interface{}
 
 // Register TransactionArgument with LCS. Will be available globaly.
-var _ = lcs.RegisterEnum(
-	// pointer to enum interface:
-	(*TransactionArgument)(nil),
-	// zero-value of variants:
-	uint64(0), [32]byte{}, "",
+//var _ = lcs.RegisterEnum(
+//	// pointer to enum interface:
+//	(*TransactionArgument)(nil),
+//	// zero-value of variants:
+//	uint64(0), [32]byte{}, "",
+//)
+
+const (
+	Uint64Kind lcs.EnumT = iota
+	BytesKind
+	StringKind
 )
+
+type TransactionArgument struct {
+	kind lcs.EnumT
+}
+
+func (t TransactionArgument) GetIdx() lcs.EnumT {
+	return t.kind
+}
+
+func (t TransactionArgument) GetType() (reflect.Type, error) {
+	switch t.kind {
+	case Uint64Kind:
+		return reflect.TypeOf(Uint64{}), nil
+	case BytesKind:
+		return reflect.TypeOf(Bytes{}), nil
+	case StringKind:
+		return reflect.TypeOf(String{}), nil
+	default:
+		return nil, errors.New("unknown enum kind")
+	}
+}
+
+type Uint64 struct {
+	TransactionArgument
+	Value uint64 `lcs:"value"`
+}
+
+type Bytes struct {
+	TransactionArgument
+	Value [32]byte `lcs:"value"`
+}
+
+type String struct {
+	TransactionArgument
+	Value string `lcs:"value"`
+}
 
 type Program struct {
 	Code    []byte
-	Args    []TransactionArgument
+	Args    []any
 	Modules [][]byte
 }
 
 func ExampleMarshal_libra_program() {
 	prog := &Program{
 		Code: []byte("move"),
-		Args: []TransactionArgument{
-			"CAFE D00D",
-			"cafe d00d",
+		Args: []any{
+			String{TransactionArgument{StringKind}, "CAFE D00D"},
+			String{TransactionArgument{StringKind}, "cafe d00d"},
 		},
 		Modules: [][]byte{{0xca}, {0xfe, 0xd0}, {0x0d}},
 	}
