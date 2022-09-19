@@ -22,8 +22,8 @@ func (e Enum1) GetIdx() EnumT {
 	return e.kind
 }
 
-func (e Enum1) GetType() (reflect.Type, error) {
-	switch e.kind {
+func (e Enum1) GetType(enumT EnumT) (reflect.Type, error) {
+	switch enumT {
 	case Enum10pt0Kind:
 		return reflect.TypeOf(Enum1Opt0{}), nil
 	case Enum10pt1Kind:
@@ -63,8 +63,9 @@ func TestInterfaceAsEnum(t *testing.T) {
 	//	e0 := &enum10pt0.Enum1
 	//	e1 := &enum10pt1.Enum1
 	//	e2 := &enum10pt2.Enum1
-	e3 := &enum10pt3.Enum1
-	data := (*Enum1Opt3)(unsafe.Pointer(e3))
+	a1 := &Enum1{Enum10pt3Kind}
+	//e3 := &enum10pt3.Enum1
+	data := (*Enum1Opt3)(unsafe.Pointer(a1))
 	t.Log(data)
 	t.Log(enum10pt3)
 

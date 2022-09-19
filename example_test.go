@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"testing"
+	"unsafe"
 
 	"github.com/coming-chat/lcs"
 )
@@ -83,50 +85,51 @@ func (t TransactionArgument) GetIdx() lcs.EnumT {
 	return t.kind
 }
 
-func (t TransactionArgument) GetType() (reflect.Type, error) {
-	switch t.kind {
+func (t TransactionArgument) GetType(enumT lcs.EnumT, pointer unsafe.Pointer) (reflect.Value, error) {
+	switch enumT {
 	case Uint64Kind:
-		return reflect.TypeOf(Uint64{}), nil
+		return reflect.ValueOf((*Uint64)(pointer)), nil
 	case BytesKind:
-		return reflect.TypeOf(Bytes{}), nil
+		return reflect.ValueOf((*Bytes)(pointer)), nil
 	case StringKind:
-		return reflect.TypeOf(String{}), nil
+		return reflect.ValueOf((*String)(pointer)), nil
 	default:
-		return nil, errors.New("unknown enum kind")
+		return reflect.Value{}, errors.New("unknown enum kind")
 	}
 }
 
 type Uint64 struct {
-	TransactionArgument
-	Value uint64 `lcs:"value"`
+	TransactionArgument `lcs:"-"`
+	Value               uint64 `lcs:"value"`
 }
 
 type Bytes struct {
-	TransactionArgument
-	Value [32]byte `lcs:"value"`
+	TransactionArgument `lcs:"-"`
+	Value               [32]byte `lcs:"value"`
 }
 
 type String struct {
-	TransactionArgument
-	Value string `lcs:"value"`
+	TransactionArgument `lcs:"-"`
+	Value               string `lcs:"value"`
 }
 
 type Program struct {
 	Code    []byte
-	Args    []any
+	Args    []*TransactionArgument
 	Modules [][]byte
 }
 
 func ExampleMarshal_libra_program() {
+	a1 := String{TransactionArgument{StringKind}, "CAFE D00D"}
+	a2 := String{TransactionArgument{StringKind}, "cafe d00d"}
 	prog := &Program{
 		Code: []byte("move"),
-		Args: []any{
-			String{TransactionArgument{StringKind}, "CAFE D00D"},
-			String{TransactionArgument{StringKind}, "cafe d00d"},
+		Args: []*TransactionArgument{
+			&a1.TransactionArgument,
+			&a2.TransactionArgument,
 		},
 		Modules: [][]byte{{0xca}, {0xfe, 0xd0}, {0x0d}},
 	}
-
 	bytes, err := lcs.Marshal(prog)
 	if err != nil {
 		panic(err)
@@ -148,4 +151,20 @@ func ExampleUnmarshal_libra_program() {
 	fmt.Printf("%+v\n", out)
 	// Output:
 	// &{Code:[109 111 118 101] Args:[CAFE D00D cafe d00d] Modules:[[202] [254 208] [13]]}
+}
+
+func TestEEE(t *testing.T) {
+	a1 := String{TransactionArgument{StringKind}, "CAFE D00D"}
+	a2 := Bytes{TransactionArgument{StringKind}, [32]byte{}}
+	prog := &Program{
+		Code: []byte("move"),
+		Args: []*TransactionArgument{
+			&a1.TransactionArgument,
+			&a2.TransactionArgument,
+		},
+		Modules: [][]byte{{0xca}, {0xfe, 0xd0}, {0x0d}},
+	}
+	ty := reflect.TypeOf((*String)(nil))
+	newT := reflect.NewAt(ty, unsafe.Pointer(prog.Args[0]))
+	fmt.Println(newT)
 }

@@ -104,7 +104,8 @@ func (d *Decoder) decode(rv reflect.Value, enumVariants map[EnumKeyType]reflect.
 		}
 		err = d.decode(rv.Elem(), enumVariants, fixedLen)
 	case reflect.Interface:
-		err = d.decodeInterface(rv, enumVariants)
+		//err = d.decodeInterface(rv, enumVariants)
+		fallthrough
 	default:
 		err = errors.New("not supported kind: " + rv.Kind().String())
 	}
@@ -248,41 +249,55 @@ func (d *Decoder) decodeString(rv reflect.Value, fixedLen int) (err error) {
 	return
 }
 
-func (d *Decoder) decodeInterface(rv reflect.Value, enumVariants map[EnumKeyType]reflect.Type) (err error) {
-	typeVal, err := readVarUint(d.r, 28)
-	if err != nil {
-		return
-	}
-	tpl, ok := enumGetTypeByIdx(rv)
-	if !ok {
-		tpl, ok = enumVariants[typeVal]
-		if !ok {
-			return fmt.Errorf("enum variant value %d unknown for interface: %s", typeVal, rv.Type())
-		}
-	}
-	if tpl.Kind() == reflect.Ptr {
-		rv1 := reflect.New(tpl.Elem())
-		if err = d.decode(rv1, nil, 0); err != nil {
-			return
-		}
-		rv.Set(rv1)
-	} else {
-		rv1 := reflect.New(tpl)
-		if err = d.decode(rv1, nil, 0); err != nil {
-			return
-		}
-		rv.Set(rv1.Elem())
-	}
-	return nil
-}
+//func (d *Decoder) decodeInterface(rv reflect.Value, enumVariants map[EnumKeyType]reflect.Type) (err error) {
+//	typeVal, err := readVarUint(d.r, 28)
+//	if err != nil {
+//		return
+//	}
+//	tpl, ok := enumGetTypeByIdx(rv.Addr(), typeVal)
+//	if !ok {
+//		return fmt.Errorf("enum variant value %d unknown for interface: %s", typeVal, rv.Type())
+//	}
+//	if tpl.Kind() == reflect.Ptr {
+//		rv1 := reflect.New(tpl.Elem())
+//		if err = d.decode(rv1, nil, 0); err != nil {
+//			return
+//		}
+//		rv.Set(rv1)
+//	} else {
+//		rv1 := reflect.New(tpl)
+//		if err = d.decode(rv1, nil, 0); err != nil {
+//			return
+//		}
+//		rv.Set(rv1.Elem())
+//	}
+//	return nil
+//}
 
 func (d *Decoder) decodeStruct(rv reflect.Value) (err error) {
+	tpl := rv
+	if rv.Type().Implements(reflect.TypeOf((*Enum)(nil)).Elem()) {
+		typeVal, err := readVarUint(d.r, 28)
+		if err != nil {
+			return err
+		}
+		tpli, ok := enumGetTypeByIdx(rv.Addr(), typeVal)
+		if !ok {
+			return errors.New("s")
+		}
+
+		rv.Set(tpli)
+		tpl = tpli.Elem()
+		//if !tpl.CanSet() {
+		//	return errors.New("1")
+		//}
+	}
 	if !rv.CanSet() {
 		return errors.New("struct cannot set")
 	}
-	rt := rv.Type()
-	for i := 0; i < rv.NumField(); i++ {
-		fv := rv.Field(i)
+	rt := tpl.Type()
+	for i := 0; i < tpl.NumField(); i++ {
+		fv := tpl.Field(i)
 		if !fv.CanSet() {
 			continue
 		}
@@ -332,6 +347,7 @@ func (d *Decoder) decodeStruct(rv reflect.Value) (err error) {
 			return
 		}
 	}
+	rv.Set(tpl)
 	return
 }
 

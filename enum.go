@@ -2,31 +2,24 @@ package lcs
 
 import (
 	"reflect"
+	"unsafe"
 )
 
 type EnumT uint64
 
 type Enum interface {
 	GetIdx() EnumT
-	GetType() (reflect.Type, error)
+	GetType(t EnumT, pointer unsafe.Pointer) (reflect.Value, error)
 }
 
-func enumGetTypeByIdx(enumType reflect.Value) (reflect.Type, bool) {
-	enum, ok := enumType.Interface().(Enum)
-	if !ok {
-		return nil, false
-	}
-	reflectType, err := enum.GetType()
+func enumGetTypeByIdx(enumType reflect.Value, idx uint64) (reflect.Value, bool) {
+	reflectType, err := enumType.Interface().(Enum).GetType(EnumT(idx), enumType.UnsafePointer())
 	if err != nil {
-		return nil, false
+		return reflect.Value{}, false
 	}
 	return reflectType, true
 }
 
-func enumGetIdxByType(enumType reflect.Value) (uint64, bool) {
-	enum, ok := enumType.Interface().(Enum)
-	if !ok {
-		return 0, false
-	}
-	return uint64(enum.GetIdx()), true
+func enumGetType(enumType reflect.Value) (reflect.Value, bool) {
+	return enumGetTypeByIdx(enumType, uint64(enumType.Interface().(Enum).GetIdx()))
 }
