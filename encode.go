@@ -81,7 +81,6 @@ func (e *Encoder) encode(rv reflect.Value, fixedLen int) (err error) {
 	case reflect.Ptr:
 		err = e.encode(rv.Elem(), 0)
 	case reflect.Interface:
-		//err = e.encodeInterface(rv)
 		fallthrough
 	default:
 		err = errors.New("not supported kind: " + rv.Kind().String())
@@ -110,30 +109,6 @@ func (e *Encoder) encodeSlice(rv reflect.Value, fixedLen int) (err error) {
 	}
 	return nil
 }
-
-//func (e *Encoder) encodeInterface(rv reflect.Value) (err error) {
-//	if rv.IsNil() {
-//		return errors.New("non-optional enum value is nil")
-//	}
-//
-//	enum, ok := rv.Interface().(Enum)
-//	if !ok {
-//		return errors.New("enum " + rv.Type().String() + " does not have variant of type ")
-//	}
-//	ev := uint64(enum.GetIdx())
-//	rvReal, ok := enumGetTypeByIdx(rv.Addr(), ev)
-//	if !ok {
-//		return errors.New("enum " + rv.Type().String() + " does not have variant of type ")
-//	}
-//
-//	if _, err = writeVarUint(e.w, ev); err != nil {
-//		return
-//	}
-//	if err = e.encode(rvReal, 0); err != nil {
-//		return err
-//	}
-//	return nil
-//}
 
 func (e *Encoder) encodeStruct(rv reflect.Value) (err error) {
 	rt := rv.Type()
