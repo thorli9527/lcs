@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"testing"
 	"unsafe"
 
 	"github.com/coming-chat/lcs"
@@ -61,16 +60,6 @@ func ExampleUnmarshal_struct() {
 	// Output: Name: test, Label: hello
 }
 
-//type TransactionArgument interface{}
-
-// Register TransactionArgument with LCS. Will be available globaly.
-//var _ = lcs.RegisterEnum(
-//	// pointer to enum interface:
-//	(*TransactionArgument)(nil),
-//	// zero-value of variants:
-//	uint64(0), [32]byte{}, "",
-//)
-
 const (
 	Uint64Kind lcs.EnumT = iota
 	BytesKind
@@ -105,7 +94,7 @@ type Uint64 struct {
 
 type Bytes struct {
 	TransactionArgument `lcs:"-"`
-	Value               [32]byte `lcs:"value"`
+	Value               []byte `lcs:"value"`
 }
 
 type String struct {
@@ -120,13 +109,15 @@ type Program struct {
 }
 
 func ExampleMarshal_libra_program() {
-	a1 := String{TransactionArgument{StringKind}, "CAFE D00D"}
-	a2 := String{TransactionArgument{StringKind}, "cafe d00d"}
+	d1 := String{TransactionArgument{StringKind}, "CAFE D00D"}
+	d2 := Bytes{TransactionArgument{BytesKind}, []byte{0xaa, 0x3d, 0x22}}
+	d3 := Uint64{TransactionArgument{Uint64Kind}, 12}
 	prog := &Program{
 		Code: []byte("move"),
 		Args: []*TransactionArgument{
-			&a1.TransactionArgument,
-			&a2.TransactionArgument,
+			&d1.TransactionArgument,
+			&d2.TransactionArgument,
+			&d3.TransactionArgument,
 		},
 		Modules: [][]byte{{0xca}, {0xfe, 0xd0}, {0x0d}},
 	}
@@ -137,34 +128,28 @@ func ExampleMarshal_libra_program() {
 
 	fmt.Printf("%X\n", bytes)
 	// Output:
-	// 046D6F766502020943414645204430304402096361666520643030640301CA02FED0010D
+	// 046D6F76650302094341464520443030440103AA3D22000C000000000000000301CA02FED0010D
 }
 
 func ExampleUnmarshal_libra_program() {
-	bytes, _ := hex.DecodeString("046D6F766502020943414645204430304402096361666520643030640301CA02FED0010D")
+	bytes, _ := hex.DecodeString("046D6F76650302094341464520443030440103AA3D22000C000000000000000301CA02FED0010D")
 	out := &Program{}
 	err := lcs.Unmarshal(bytes, out)
 	if err != nil {
 		panic(err)
 	}
-
-	fmt.Printf("%+v\n", out)
+	d1 := (*String)(unsafe.Pointer(out.Args[0]))
+	d2 := (*Bytes)(unsafe.Pointer(out.Args[1]))
+	d3 := (*Uint64)(unsafe.Pointer(out.Args[2]))
+	fmt.Printf("%+v\n", d1)
+	fmt.Printf("%+v\n", d2)
+	fmt.Printf("%+v\n", d3)
+	fmt.Printf("%+v\n", out.Code)
+	fmt.Printf("%+v\n", out.Modules)
 	// Output:
-	// &{Code:[109 111 118 101] Args:[CAFE D00D cafe d00d] Modules:[[202] [254 208] [13]]}
-}
-
-func TestEEE(t *testing.T) {
-	a1 := String{TransactionArgument{StringKind}, "CAFE D00D"}
-	a2 := Bytes{TransactionArgument{StringKind}, [32]byte{}}
-	prog := &Program{
-		Code: []byte("move"),
-		Args: []*TransactionArgument{
-			&a1.TransactionArgument,
-			&a2.TransactionArgument,
-		},
-		Modules: [][]byte{{0xca}, {0xfe, 0xd0}, {0x0d}},
-	}
-	ty := reflect.TypeOf((*String)(nil))
-	newT := reflect.NewAt(ty, unsafe.Pointer(prog.Args[0]))
-	fmt.Println(newT)
+	// &{TransactionArgument:{kind:2} Value:CAFE D00D}
+	// &{TransactionArgument:{kind:1} Value:[170 61 34]}
+	// &{TransactionArgument:{kind:0} Value:12}
+	// [109 111 118 101]
+	// [[202] [254 208] [13]]
 }
