@@ -261,9 +261,9 @@ func (d *Decoder) decodeStruct(rv reflect.Value) (err error) {
 		}
 
 		tpl := tpli.Elem()
-		v := reflect.NewAt(tpl.FieldByName("kind").Type(), unsafe.Pointer(tpl.FieldByName("kind").UnsafeAddr())).Elem()
+		v := reflect.NewAt(tpl.Field(0).Field(0).Type(), unsafe.Pointer(tpl.Field(0).Field(0).UnsafeAddr())).Elem()
 		v.SetUint(typeVal)
-		rv.Set(tpl.FieldByName("TransactionArgument"))
+		rv.Set(tpl.Field(0))
 		rv = tpl
 	}
 	if !rv.CanSet() {
